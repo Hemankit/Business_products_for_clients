@@ -1,0 +1,9 @@
+# Demo mapping for client specific onboarding fields
+onboarding:
+  name: full_name
+  email: email_address
+  phone: phone_number
+  company: company_name
+  requested_service: service_requested
+  existing_systems: current_systems
+  notes: additional_notes

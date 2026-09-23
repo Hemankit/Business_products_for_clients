@@ -1,0 +1,3 @@
+# Demo integration config for client specific external systems
+crm:
+  provider: mock
