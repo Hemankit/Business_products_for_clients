@@ -1,3 +1,6 @@
 # Demo integration config for client specific external systems
 crm:
-  provider: mock
+  provider: composio
+  toolkit_slug: hubspot
+  action_slug: HUBSPOT_CREATE_CONTACT
+  user_id: demo_company
