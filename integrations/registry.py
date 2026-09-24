@@ -1,6 +1,7 @@
 from integrations.base import BaseIntegration
 from integrations.mock import MockIntegration
 from integrations.composio import ComposioIntegration
+from core.exceptions import ProviderError
 
 
 class IntegrationRegistry:
@@ -22,6 +23,6 @@ class IntegrationRegistry:
                 action_slug=config.get("action_slug"),
             )
 
-        raise ValueError(
+        raise ProviderError(
             f"Unsupported integration provider: {provider}"
         )

@@ -1,6 +1,7 @@
 from anthropic import Anthropic
 from dotenv import load_dotenv
 
+from core.exceptions import LLMExtractionError
 from src.products.onboarding.schemas import OnboardingRequest
 from src.products.onboarding.prompts import (
     SYSTEM_PROMPT,
@@ -29,15 +30,15 @@ def extract_onboarding_fields(raw_text: str) -> OnboardingRequest:
     )
 
     if response.stop_reason == "refusal":
-        raise ValueError("The model refused to provide a response.")
+        raise LLMExtractionError("The model refused to provide a response.")
 
     if response.stop_reason == "max_tokens":
-        raise ValueError(
+        raise LLMExtractionError(
             "Response was truncated; retry with a higher max_tokens."
         )
 
     if response.parsed_output is None:
-        raise ValueError("No structured onboarding output was returned.")
+        raise LLMExtractionError("No structured onboarding output was returned.")
 
     return response.parsed_output
 
@@ -60,5 +61,5 @@ if __name__ == "__main__":
     try:
         onboarding_data = extract_onboarding_fields(raw_text)
         print(onboarding_data)
-    except ValueError as e:
+    except LLMExtractionError as e:
         print(f"Error: {e}")

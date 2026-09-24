@@ -24,7 +24,7 @@ class BaseIntegration(ABC):
             A dictionary containing the result of the operation.
 
         Raises:
-            Exception:
+            IntegrationError:
                 If the external operation fails.
         """
         raise NotImplementedError

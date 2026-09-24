@@ -1,5 +1,6 @@
 from composio import Composio
 from integrations.base import BaseIntegration
+from core.exceptions import IntegrationError
 
 from typing import Any
 from dotenv import load_dotenv
@@ -40,7 +41,7 @@ class ComposioIntegration(BaseIntegration):
         )
 
         if result.error:
-            raise RuntimeError(
+            raise IntegrationError(
                 f"Composio action {self.action_slug} failed: "
                 f"{result.error}"
             )

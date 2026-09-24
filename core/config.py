@@ -3,6 +3,8 @@ from typing import Any
 
 import yaml
 
+from core.exceptions import ClientConfigError, IntegrationError, MappingError
+
 
 class ClientConfig:
     def __init__(
@@ -13,7 +15,7 @@ class ClientConfig:
         self.client_dir = Path(base_dir) / client_name
 
         if not self.client_dir.exists():
-            raise ValueError(
+            raise ClientConfigError(
                 f"Client configuration not found: {client_name}"
             )
 
@@ -21,7 +23,7 @@ class ClientConfig:
         path = self.client_dir / filename
 
         if not path.exists():
-            raise ValueError(
+            raise ClientConfigError(
                 f"Missing configuration file: {path}"
             )
 
@@ -34,7 +36,7 @@ class ClientConfig:
         mapping = mappings.get(product)
 
         if mapping is None:
-            raise ValueError(
+            raise MappingError(
                 f"No mapping configured for product: {product}"
             )
 
@@ -49,7 +51,7 @@ class ClientConfig:
         integration = integrations.get(integration_name)
 
         if integration is None:
-            raise ValueError(
+            raise IntegrationError(
                 f"No integration configured: {integration_name}"
             )
 
