@@ -1,0 +1,8 @@
+onboarding:
+  name: customer_name
+  email: primary_email
+  phone: contact_number
+  company: organization
+  requested_service: requested_solution
+  existing_systems: software_stack
+  notes: intake_notes

@@ -1,0 +1,3 @@
+actions:
+  crm.create_record:
+    approval: false

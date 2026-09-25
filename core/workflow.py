@@ -3,6 +3,7 @@ from typing import Any
 from core.config import ClientConfig
 from core.llm import extract_onboarding_fields
 from core.mapping import Mapper
+from core.policies import PolicyChecker
 from integrations.registry import IntegrationRegistry
 
 
@@ -35,7 +36,23 @@ def run_onboarding_workflow(
         integration_config
     )
 
-    # 5. Execute external action
+    # 5. Check policy before executing the external action
+    policy_checker = PolicyChecker(
+        config.get_permissions()
+    )
+
+    decision = policy_checker.check(
+        "crm.create_record"
+    )
+
+    if decision["status"] == "approval_required":
+        return {
+            "onboarding_data": onboarding_data,
+            "mapped_data": mapped_data,
+            "policy_decision": decision,
+        }
+
+    # 6. Execute external action
     result = integration.create_record(
         mapped_data
     )
@@ -43,6 +60,7 @@ def run_onboarding_workflow(
     return {
         "onboarding_data": onboarding_data,
         "mapped_data": mapped_data,
+        "policy_decision": decision,
         "integration_result": result,
     }
 
@@ -72,6 +90,9 @@ if __name__ == "__main__":
 
     print("\n--- Client-specific payload ---")
     print(result["mapped_data"])
+
+    print("\n--- Policy decision ---")
+    print(result["policy_decision"])
 
     print("\n--- Integration result ---")
     print(result["integration_result"])
