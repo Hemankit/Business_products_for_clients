@@ -59,3 +59,6 @@ class ClientConfig:
 
     def get_permissions(self) -> dict[str, Any]:
         return self._load_yaml("permissions.yaml")
+
+    def get_routing(self) -> dict[str, Any]:
+        return self._load_yaml("routing.yaml")

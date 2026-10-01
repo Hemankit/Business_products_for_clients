@@ -7,3 +7,16 @@ onboarding:
   requested_service: service_requested
   existing_systems: current_systems
   notes: additional_notes
+
+intake:
+  name: customer_name
+  email: primary_email
+  phone: contact_number
+  company: organization
+  category: request_category
+  subject: request_subject
+  description: request_description
+  requested_action: requested_action
+  existing_systems: software_stack
+  urgency: priority
+  notes: intake_notes

@@ -1,3 +1,7 @@
 actions:
   crm.create_record:
     approval: false
+  accounting.create_record:
+    approval: false
+  support.create_record:
+    approval: false

@@ -4,3 +4,9 @@ crm:
   toolkit_slug: hubspot
   action_slug: HUBSPOT_CREATE_CONTACT
   user_id: demo_company
+
+accounting:
+  provider: mock
+
+support:
+  provider: mock

@@ -1,0 +1,15 @@
+billing:
+  integration: accounting
+  destination: accounts_receivable
+
+sales:
+  integration: crm
+  destination: sales_team
+
+support:
+  integration: support
+  destination: support_queue
+
+general:
+  integration: crm
+  destination: general_inquiries
