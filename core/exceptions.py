@@ -16,3 +16,15 @@ class IntegrationError(Exception):
 
 class LLMExtractionError(Exception):
     pass
+
+class EmbeddingError(Exception):
+    pass
+
+class VectorStoreError(Exception):
+    pass
+
+class IngestionError(Exception):
+    pass
+
+class LLMGenerationError(Exception):
+    pass
