@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Any
 
+from vcr import config
 import yaml
 
 from core.exceptions import ClientConfigError, IntegrationError, MappingError
@@ -62,3 +63,19 @@ class ClientConfig:
 
     def get_routing(self) -> dict[str, Any]:
         return self._load_yaml("routing.yaml")
+
+    def get_document_processing(
+    self,
+    document_type: str,
+) -> dict[str, Any]:
+        config = self._load_yaml("document_processing.yaml")
+
+        rules = config.get(document_type)
+
+        if rules is None:
+            raise ClientConfigError(
+            f"No document processing configuration found "
+            f"for document type: {document_type}"
+        )
+
+        return rules

@@ -28,3 +28,6 @@ class IngestionError(Exception):
 
 class LLMGenerationError(Exception):
     pass
+
+class DocumentUnderstandingError(Exception):
+    pass

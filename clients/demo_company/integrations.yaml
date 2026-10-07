@@ -10,3 +10,6 @@ accounting:
 
 support:
   provider: mock
+
+document_processing:
+  provider: mock

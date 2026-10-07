@@ -1,0 +1,11 @@
+invoice:
+  required_fields:
+    - vendor_name
+    - invoice_number
+    - invoice_date
+    - total_amount
+    - currency
+
+  require_purchase_order: true
+
+  total_amount_must_be_positive: true
