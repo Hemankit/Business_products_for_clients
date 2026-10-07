@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Any
 
-from vcr import config
 import yaml
 
 from core.exceptions import ClientConfigError, IntegrationError, MappingError
