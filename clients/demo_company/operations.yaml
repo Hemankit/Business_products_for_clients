@@ -1,0 +1,19 @@
+create_follow_up_task:
+  integration: operations
+  integration_action: create_task
+
+  parameters:
+    message:
+      required: true
+    due:
+      required: true
+
+send_internal_message:
+  integration: operations
+  integration_action: send_message
+
+  parameters:
+    message:
+      required: true
+    recipient:
+      required: true

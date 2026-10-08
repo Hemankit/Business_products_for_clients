@@ -13,3 +13,6 @@ support:
 
 document_processing:
   provider: mock
+
+operations:
+  provider: mock

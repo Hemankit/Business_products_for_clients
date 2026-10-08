@@ -1,7 +1,15 @@
 actions:
   crm.create_record:
     approval: false
+
   accounting.create_record:
     approval: false
+
   support.create_record:
     approval: false
+
+  operations.create_task:
+    approval: false
+
+  operations.send_message:
+    approval: true

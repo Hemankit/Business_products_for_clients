@@ -78,3 +78,6 @@ class ClientConfig:
         )
 
         return rules
+    
+    def get_operations(self) -> dict[str, Any]:
+        return self._load_yaml("operations.yaml")
