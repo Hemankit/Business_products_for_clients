@@ -1,6 +1,6 @@
-import pydantic
 from anthropic import Anthropic
 from dotenv import load_dotenv
+from pydantic import ValidationError
 
 from core.exceptions import LLMExtractionError
 from src.products.operations_assistant.prompts import (
@@ -14,18 +14,17 @@ load_dotenv()
 
 client = Anthropic()
 
-MODEL = "claude-sonnet-4-5"
+MODEL = "claude-sonnet-4-6"
 
-# The Anthropic `output_format` (schema-constrained) response mode reliably
-# collapses open-ended fields such as `parameters: dict[str, Any]` to `{}`,
-# since its constrained decoding grammar has no enumerated keys to anchor on.
-# Forced tool-use samples the same JSON schema without that constraint and
-# consistently extracts the parameters, so it is used here instead.
 EXTRACTION_TOOL_NAME = "extract_operation"
 
 EXTRACTION_TOOL = {
     "name": EXTRACTION_TOOL_NAME,
-    "description": "Extract a structured business operation request.",
+    "description": (
+        "Return the employee request as one structured business operation. "
+        "Use only the configured business action and parameter names supplied "
+        "in the request context."
+    ),
     "input_schema": OperationRequest.model_json_schema(),
 }
 
@@ -54,13 +53,16 @@ def interpret_operation(
                 {
                     "role": "user",
                     "content": build_operation_prompt(
-                        raw_text,
-                        operation_config,
+                        raw_text=raw_text,
+                        operation_config=operation_config,
                     ),
                 }
             ],
             tools=[EXTRACTION_TOOL],
-            tool_choice={"type": "tool", "name": EXTRACTION_TOOL_NAME},
+            tool_choice={
+                "type": "tool",
+                "name": EXTRACTION_TOOL_NAME,
+            },
         )
 
     except Exception as e:
@@ -79,7 +81,14 @@ def interpret_operation(
         )
 
     tool_use = next(
-        (block for block in response.content if block.type == "tool_use"),
+        (
+            block
+            for block in response.content
+            if (
+                block.type == "tool_use"
+                and block.name == EXTRACTION_TOOL_NAME
+            )
+        ),
         None,
     )
 
@@ -89,8 +98,11 @@ def interpret_operation(
         )
 
     try:
-        parsed = OperationRequest.model_validate(tool_use.input)
-    except pydantic.ValidationError as e:
+        parsed = OperationRequest.model_validate(
+            tool_use.input
+        )
+
+    except ValidationError as e:
         raise LLMExtractionError(
             f"Model returned an invalid operation request: {e}"
         ) from e
@@ -100,7 +112,29 @@ def interpret_operation(
             f"Model returned unsupported operation: {parsed.action}"
         )
 
+    parameter_config = (
+        operation_config[parsed.action].get("parameters")
+        or {}
+    )
+
+    allowed_parameter_names = set(
+        parameter_config.keys()
+    )
+
+    unexpected_parameters = (
+        set(parsed.parameters.keys())
+        - allowed_parameter_names
+    )
+
+    if unexpected_parameters:
+        raise LLMExtractionError(
+            "Model returned unsupported parameters for "
+            f"'{parsed.action}': "
+            f"{sorted(unexpected_parameters)}"
+        )
+
     return parsed
+
 
 if __name__ == "__main__":
     raw_text = """
@@ -111,14 +145,36 @@ if __name__ == "__main__":
     operation_config = {
         "create_follow_up_task": {
             "parameters": {
-                "message": {"required": True},
-                "due": {"required": True},
+                "message": {
+                    "required": True,
+                    "description": (
+                        "Short instruction describing what the "
+                        "follow-up task should remind the employee to do."
+                    ),
+                },
+                "due": {
+                    "required": True,
+                    "description": (
+                        "Requested due date or relative time phrase."
+                    ),
+                },
             },
         },
         "send_internal_message": {
             "parameters": {
-                "message": {"required": True},
-                "recipient": {"required": True},
+                "recipient": {
+                    "required": True,
+                    "description": (
+                        "Person or team that should receive the message."
+                    ),
+                },
+                "message": {
+                    "required": True,
+                    "description": (
+                        "Message based only on what the employee asked "
+                        "to communicate."
+                    ),
+                },
             },
         },
     }
@@ -140,4 +196,3 @@ if __name__ == "__main__":
 
     except (LLMExtractionError, ValueError) as e:
         print(f"Error interpreting operation: {e}")
- 

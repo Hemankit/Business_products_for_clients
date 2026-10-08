@@ -1,7 +1,7 @@
 from typing import Any
 
 from core.config import ClientConfig
-from core.llm import extract_onboarding_fields
+from products.onboarding.llm import extract_onboarding_fields
 from core.mapping import Mapper
 from core.policies import PolicyChecker
 from integrations.registry import IntegrationRegistry

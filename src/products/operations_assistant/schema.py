@@ -28,3 +28,15 @@ class ResolvedOperation(BaseModel):
 
     integration_name: str
     integration_action: str
+
+class OperationValidationIssue(BaseModel):
+    field: str
+    message: str
+
+
+class OperationValidationResult(BaseModel):
+    status: str
+
+    issues: list[OperationValidationIssue] = Field(
+        default_factory=list
+    )

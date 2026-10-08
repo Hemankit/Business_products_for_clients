@@ -5,15 +5,19 @@ create_follow_up_task:
   parameters:
     message:
       required: true
+      description: Short instruction describing the follow-up task.
     due:
       required: true
+      description: Requested due date or relative time phrase.
 
 send_internal_message:
   integration: operations
   integration_action: send_message
 
   parameters:
-    message:
-      required: true
     recipient:
       required: true
+      description: Person or team that should receive the message.
+    message:
+      required: true
+      description: Message the employee wants communicated.
