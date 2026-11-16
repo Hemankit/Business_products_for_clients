@@ -2,6 +2,7 @@ from typing import Any
 
 from knowledge.llm import answer_knowledge_question
 from knowledge.retriever import retrieve_knowledge
+from core.config import ClientConfig
 
 
 def run_knowledge_workflow(
@@ -10,9 +11,9 @@ def run_knowledge_workflow(
     top_k: int = 5,
 ) -> dict[str, Any]:
 
-    # Temporary tenant identity.
-    # This will eventually become a stable configured client_id.
-    client_id = client_name
+    
+    config = ClientConfig(client_name)
+    client_id = config.get_client_id()
 
     # 1. Retrieve tenant-scoped company knowledge
     knowledge = retrieve_knowledge(

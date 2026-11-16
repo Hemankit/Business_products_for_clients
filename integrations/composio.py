@@ -39,6 +39,8 @@ class ComposioIntegration(BaseIntegration):
         data: dict[str, Any],
     ) -> dict[str, Any]:
 
+        self._require_connection()
+
         result = self.session.execute(
             self.action_slug,
             arguments=data,
@@ -59,3 +61,29 @@ class ComposioIntegration(BaseIntegration):
                 "log_id": result.log_id,
             },
         }
+
+    def is_connected(self) -> bool:
+        toolkits = self.session.toolkits()
+
+        for toolkit in toolkits.items:
+            if toolkit.slug != self.toolkit_slug:
+                continue
+
+            connection = toolkit.connection
+
+            return bool(
+                connection
+                and connection.is_active
+                and connection.connected_account
+            )
+
+        return False
+
+    def _require_connection(self) -> None:
+        if not self.is_connected():
+         raise IntegrationError(
+            "No active Composio connection found for "
+            f"toolkit '{self.toolkit_slug}'."
+        )
+
+    

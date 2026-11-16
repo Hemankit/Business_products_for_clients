@@ -27,6 +27,8 @@ to clients or external systems directly:
 - **`config.py` — `ClientConfig`**: Resolves a client name to its config directory
   under `clients/` and loads/validates the client's YAML files on demand (mappings,
   integrations, permissions, routing, operations, document-processing rules).
+  `get_client_id()` returns the stable `client_id` from the client's `client.yaml`,
+  which is the identity used for per-client integration connections.
 - **`mapping.py` — `Mapper`**: Converts a validated, canonical Pydantic model into a
   client-specific field-name payload using the client's `mappings.yaml`.
 - **`policies.py` — `PolicyChecker`**: Looks up whether a given action is allowed
@@ -94,10 +96,39 @@ crm:
   provider: composio
   toolkit_slug: hubspot
   action_slug: HUBSPOT_CREATE_CONTACT
-  user_id: <client_name>
 ```
 
 Set `provider: mock` to run the same workflow without calling any external system.
+
+The Composio user a connection belongs to is the client's `client_id`, defined in
+`clients/<client_name>/client.yaml` (not in `integrations.yaml`):
+
+```yaml
+client_id: demo_company
+```
+
+`ComposioIntegration` checks for an active connection before executing and raises an
+`IntegrationError` if the client has not connected the toolkit.
+
+#### Connecting a client's account
+
+Generate a Connect Link for a client and authenticate through it:
+
+```
+PYTHONPATH=. python -u scripts/connect_composio_toolkit.py <client_name> [toolkit_slug]
+```
+
+`toolkit_slug` defaults to `hubspot`. The script prints the link, waits up to 10
+minutes for the authentication to finish, then prints the connected account id. After
+that, any workflow run with the same client uses that connection. Linked accounts live
+in Composio, so remove test connections from the Composio dashboard when done.
+
+### Running Workflows
+
+Product modules import each other as `src.products.<product>...`, so run entry points
+from the repository root with the root on the import path (`PYTHONPATH=.`). The
+repository ships an empty `src/__init__.py` so this `src` package takes precedence over
+any unrelated `src` package installed in site-packages.
 
 ## Product Structure (`src/products/<product>/`)
 
@@ -148,6 +179,8 @@ without an `integration_result`.
 Every client is represented purely as configuration — no client-specific code — using
 a consistent set of optional YAML files that `ClientConfig` knows how to load:
 
+- **`client.yaml`**: The client's stable `client_id`, used as the Composio user id for
+  that client's connected accounts.
 - **`mappings.yaml`**: Canonical field name → client-specific field name, keyed by
   product.
 - **`integrations.yaml`**: Which integration provider (`mock`, `composio`, etc.) and
@@ -180,6 +213,6 @@ instance locally for development.
 - **`requirements.txt`** lists the dependency set shared by all products, grouped by
   concern: integration layer, LLM + structured extraction, retrieval, human-in-the-loop,
   orchestration, and observability/testing.
-- **`scripts/`** holds standalone, non-product scripts (connector auth flows, ingestion
-  smoke tests, retrieval smoke tests) used during development rather than in production
+- **`scripts/`** holds standalone, non-product scripts (connector auth flows such as
+  `connect_composio_toolkit.py`, ingestion smoke tests, retrieval smoke tests) used during development rather than in production
   pipelines.

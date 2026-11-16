@@ -81,3 +81,31 @@ class ClientConfig:
     
     def get_operations(self) -> dict[str, Any]:
         return self._load_yaml("operations.yaml")
+
+    def get_client_id(self) -> str:
+        client_config = self._load_yaml(
+        "client.yaml"
+    )
+
+        client_id = client_config.get(
+        "client_id"
+    )
+
+        if not client_id:
+            raise ClientConfigError(
+            "client.yaml must define client_id."
+        )
+
+        if not isinstance(client_id, str):
+            raise ClientConfigError(
+            "client_id must be a string."
+        )
+
+        client_id = client_id.strip()
+
+        if not client_id:
+            raise ClientConfigError(
+            "client_id cannot be empty."
+        )
+
+        return client_id

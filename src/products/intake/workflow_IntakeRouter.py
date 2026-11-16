@@ -68,8 +68,10 @@ def run_intake_workflow(
     # 6. Build the selected integration
     integration_registry = IntegrationRegistry()
 
+    client_id = config.get_client_id()
     integration = integration_registry.get_integration(
-        integration_config
+        config=integration_config,
+        client_id=client_id,
     )
 
     # 7. Check policy before external execution

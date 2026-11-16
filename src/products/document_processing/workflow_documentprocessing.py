@@ -99,8 +99,10 @@ def run_document_processing_workflow(
     # 8. Build integration
     integration_registry = IntegrationRegistry()
 
+    client_id = config.get_client_id()
     integration = integration_registry.get_integration(
-        integration_config
+        config=integration_config,
+        client_id=client_id,
     )
 
     # 9. Execute external action

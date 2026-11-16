@@ -3,7 +3,7 @@ from typing import Any
 from core.config import ClientConfig
 from core.policies import PolicyChecker
 
-from products.onboarding.llm import extract_onboarding_fields
+from src.products.onboarding.llm import extract_onboarding_fields
 
 from integrations.registry import IntegrationRegistry
 from integrations.adapters.registry import PayloadAdapterRegistry
@@ -52,8 +52,10 @@ def run_onboarding_workflow(
     # 4. Client configuration -> correct integration
     integration_registry = IntegrationRegistry()
 
+    client_id = config.get_client_id()
     integration = integration_registry.get_integration(
-        integration_config
+        config=integration_config,
+        client_id=client_id,
     )
 
     # 5. Check policy before executing external action
