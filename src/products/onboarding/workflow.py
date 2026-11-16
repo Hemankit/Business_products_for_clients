@@ -1,10 +1,12 @@
 from typing import Any
 
 from core.config import ClientConfig
-from products.onboarding.llm import extract_onboarding_fields
-from core.mapping import Mapper
 from core.policies import PolicyChecker
+
+from products.onboarding.llm import extract_onboarding_fields
+
 from integrations.registry import IntegrationRegistry
+from integrations.adapters.registry import PayloadAdapterRegistry
 
 
 def run_onboarding_workflow(
@@ -18,25 +20,43 @@ def run_onboarding_workflow(
     field_mapping = config.get_mapping("onboarding")
     integration_config = config.get_integration("crm")
 
-    # 2. Raw text -> canonical schema
-    onboarding_data = extract_onboarding_fields(raw_text)
+    # 2. Raw text -> canonical onboarding schema
+    onboarding_data = extract_onboarding_fields(
+        raw_text
+    )
 
-    # 3. Canonical schema -> client-specific payload
-    mapper = Mapper()
+    # 3. Canonical onboarding data -> integration payload
+    canonical_data = onboarding_data.model_dump(
+        exclude_none=True
+    )
 
-    mapped_data = mapper.create_mapping(
-        data_model=onboarding_data,
+    payload_registry = PayloadAdapterRegistry()
+
+    payload_adapter = payload_registry.get_adapter(
+        provider=integration_config["provider"],
+        toolkit_slug=integration_config.get(
+            "toolkit_slug"
+        ),
+        action_slug=integration_config.get(
+            "action_slug"
+        ),
         field_mapping=field_mapping,
     )
 
-    # 4. Client configuration -> correct integration
-    registry = IntegrationRegistry()
+    integration_payload = (
+        payload_adapter.build_payload(
+            canonical_data
+        )
+    )
 
-    integration = registry.get_integration(
+    # 4. Client configuration -> correct integration
+    integration_registry = IntegrationRegistry()
+
+    integration = integration_registry.get_integration(
         integration_config
     )
 
-    # 5. Check policy before executing the external action
+    # 5. Check policy before executing external action
     policy_checker = PolicyChecker(
         config.get_permissions()
     )
@@ -48,21 +68,22 @@ def run_onboarding_workflow(
     if decision["status"] == "approval_required":
         return {
             "onboarding_data": onboarding_data,
-            "mapped_data": mapped_data,
+            "integration_payload": integration_payload,
             "policy_decision": decision,
         }
 
     # 6. Execute external action
     result = integration.create_record(
-        mapped_data
+        integration_payload
     )
 
     return {
         "onboarding_data": onboarding_data,
-        "mapped_data": mapped_data,
+        "integration_payload": integration_payload,
         "policy_decision": decision,
         "integration_result": result,
     }
+
 
 if __name__ == "__main__":
     raw_text = """
@@ -88,11 +109,15 @@ if __name__ == "__main__":
     print("\n--- Canonical onboarding object ---")
     print(result["onboarding_data"])
 
-    print("\n--- Client-specific payload ---")
-    print(result["mapped_data"])
+    print("\n--- Integration payload ---")
+    print(result["integration_payload"])
 
     print("\n--- Policy decision ---")
     print(result["policy_decision"])
 
-    print("\n--- Integration result ---")
-    print(result["integration_result"])
+    if "integration_result" in result:
+        print("\n--- Integration result ---")
+        print(result["integration_result"])
+    else:
+        print("\n--- External execution skipped ---")
+        print("Approval is required before execution.")

@@ -1,16 +1,19 @@
-from composio import Composio
-from integrations.base import BaseIntegration
-from core.exceptions import IntegrationError
-
-from typing import Any
-from dotenv import load_dotenv
 import os
+from typing import Any
 
-load_dotenv()
+from composio import Composio
 
-composio_client = Composio(api_key=os.getenv("COMPOSIO_API_KEY"))
+from core.exceptions import IntegrationError
+from integrations.base import BaseIntegration
+
+
+composio_client = Composio(
+    api_key=os.getenv("COMPOSIO_API_KEY")
+)
+
 
 class ComposioIntegration(BaseIntegration):
+
     def __init__(
         self,
         user_id: str,
@@ -18,6 +21,7 @@ class ComposioIntegration(BaseIntegration):
         action_slug: str,
         composio: Composio = composio_client,
     ):
+        self.toolkit_slug = toolkit_slug
         self.action_slug = action_slug
 
         self.session = composio.sessions.create(
@@ -55,6 +59,3 @@ class ComposioIntegration(BaseIntegration):
                 "log_id": result.log_id,
             },
         }
-
-        
-    

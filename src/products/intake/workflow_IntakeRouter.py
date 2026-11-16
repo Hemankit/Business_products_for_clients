@@ -2,12 +2,12 @@ from typing import Any
 
 from core.config import ClientConfig
 from core.policies import PolicyChecker
-from core.mapping import Mapper
 
 from src.products.intake.llm import extract_intake_fields
 from src.products.intake.router import Router
 
 from integrations.registry import IntegrationRegistry
+from integrations.adapters.registry import PayloadAdapterRegistry
 
 
 def run_intake_workflow(
@@ -36,32 +36,50 @@ def run_intake_workflow(
         intake_request
     )
 
-    # 4. Canonical schema -> client-specific payload
-    mapper = Mapper()
-
-    mapped_data = mapper.create_mapping(
-        data_model=intake_request,
-        field_mapping=field_mapping,
-    )
-
-    # 5. Routing decision -> correct integration
+    # 4. Resolve the integration selected by routing
     integration_config = config.get_integration(
         routing_decision.integration_name
     )
 
-    registry = IntegrationRegistry()
+    # 5. Canonical business data -> integration payload
+    canonical_data = intake_request.model_dump(
+        exclude_none=True
+    )
 
-    integration = registry.get_integration(
+    payload_registry = PayloadAdapterRegistry()
+
+    payload_adapter = payload_registry.get_adapter(
+        provider=integration_config["provider"],
+        toolkit_slug=integration_config.get(
+            "toolkit_slug"
+        ),
+        action_slug=integration_config.get(
+            "action_slug"
+        ),
+        field_mapping=field_mapping,
+    )
+
+    integration_payload = (
+        payload_adapter.build_payload(
+            canonical_data
+        )
+    )
+
+    # 6. Build the selected integration
+    integration_registry = IntegrationRegistry()
+
+    integration = integration_registry.get_integration(
         integration_config
     )
 
-    # 6. Check policy before external execution
+    # 7. Check policy before external execution
     policy_checker = PolicyChecker(
         config.get_permissions()
     )
 
     action = (
-        f"{routing_decision.integration_name}.create_record"
+        f"{routing_decision.integration_name}."
+        "create_record"
     )
 
     decision = policy_checker.check(action)
@@ -70,19 +88,19 @@ def run_intake_workflow(
         return {
             "intake_data": intake_request,
             "routing_decision": routing_decision,
-            "mapped_data": mapped_data,
+            "integration_payload": integration_payload,
             "policy_decision": decision,
         }
 
-    # 7. Execute external action
+    # 8. Execute external action
     result = integration.create_record(
-        mapped_data
+        integration_payload
     )
 
     return {
         "intake_data": intake_request,
         "routing_decision": routing_decision,
-        "mapped_data": mapped_data,
+        "integration_payload": integration_payload,
         "policy_decision": decision,
         "integration_result": result,
     }
@@ -92,9 +110,8 @@ if __name__ == "__main__":
     raw_text = """
     Hi, my name is James Carter and I work at Acme Solutions.
 
-    We noticed that our most recent invoice appears to charge us twice
-    for the same service. Could someone please look into this today
-    and let us know whether one of the charges can be refunded?
+    We're interested in learning more about your automation services.
+    Could someone from sales contact me about the options?
 
     You can reach me at james@acmesolutions.com.
     """
@@ -110,8 +127,8 @@ if __name__ == "__main__":
     print("\n--- Routing decision ---")
     print(result["routing_decision"])
 
-    print("\n--- Client-specific payload ---")
-    print(result["mapped_data"])
+    print("\n--- Integration payload ---")
+    print(result["integration_payload"])
 
     print("\n--- Policy decision ---")
     print(result["policy_decision"])
@@ -122,9 +139,3 @@ if __name__ == "__main__":
     else:
         print("\n--- External execution skipped ---")
         print("Approval is required before execution.")
-
-
-      
-    
-
-    

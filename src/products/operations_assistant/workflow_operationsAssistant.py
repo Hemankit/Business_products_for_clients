@@ -4,6 +4,7 @@ from core.config import ClientConfig
 from core.policies import PolicyChecker
 
 from integrations.registry import IntegrationRegistry
+from integrations.adapters.registry import PayloadAdapterRegistry
 
 from src.products.operations_assistant.llm import interpret_operation
 from src.products.operations_assistant.resolver import resolve_operation
@@ -32,7 +33,7 @@ def run_operations_workflow(
         operation_config=operation_config,
     )
 
-    # 4. Stop before resolution/execution if operation is incomplete
+    # 4. Stop if operation is incomplete
     if validation_result.status == "incomplete":
         return {
             "operation_request": operation_request,
@@ -45,18 +46,42 @@ def run_operations_workflow(
         operation_config=operation_config,
     )
 
-    # 6. Resolve the integration selected by operations.yaml
+    # 6. Resolve selected integration configuration
     integration_config = config.get_integration(
         resolved_operation.integration_name
     )
 
-    registry = IntegrationRegistry()
-
-    integration = registry.get_integration(
-        integration_config
+    # 7. Build canonical operation payload
+    canonical_payload = dict(
+        operation_request.parameters
     )
 
-    # 7. Check policy before execution
+    if operation_request.target is not None:
+        canonical_payload["target"] = (
+            operation_request.target
+        )
+
+    # 8. Canonical operation payload -> integration payload
+    payload_registry = PayloadAdapterRegistry()
+
+    payload_adapter = payload_registry.get_adapter(
+        provider=integration_config["provider"],
+        toolkit_slug=integration_config.get(
+            "toolkit_slug"
+        ),
+        action_slug=(
+            integration_config.get("action_slug")
+            or resolved_operation.integration_action
+        ),
+    )
+
+    integration_payload = (
+        payload_adapter.build_payload(
+            canonical_payload
+        )
+    )
+
+    # 9. Check policy before execution
     policy_checker = PolicyChecker(
         config.get_permissions()
     )
@@ -70,38 +95,38 @@ def run_operations_workflow(
         policy_action
     )
 
-    # 8. Build generic action payload
-    action_data = dict(
-        operation_request.parameters
-    )
-
-    if operation_request.target is not None:
-        action_data["target"] = operation_request.target
-
-    # 9. Stop if approval is required
+    # 10. Stop if approval is required
     if decision["status"] == "approval_required":
         return {
             "operation_request": operation_request,
             "validation": validation_result,
             "resolved_operation": resolved_operation,
-            "action_data": action_data,
+            "integration_payload": integration_payload,
             "policy_decision": decision,
         }
 
-    # 10. Execute configured integration action
+    # 11. Build selected integration
+    integration_registry = IntegrationRegistry()
+
+    integration = integration_registry.get_integration(
+        integration_config
+    )
+
+    # 12. Execute configured integration action
     result = integration.execute_action(
         action=resolved_operation.integration_action,
-        data=action_data,
+        data=integration_payload,
     )
 
     return {
         "operation_request": operation_request,
         "validation": validation_result,
         "resolved_operation": resolved_operation,
-        "action_data": action_data,
+        "integration_payload": integration_payload,
         "policy_decision": decision,
         "integration_result": result,
     }
+
 
 if __name__ == "__main__":
     raw_text = """
@@ -132,7 +157,7 @@ if __name__ == "__main__":
         print(result["resolved_operation"])
 
         print("\n--- Action data ---")
-        print(result["action_data"])
+        print(result["integration_payload"])
 
         print("\n--- Policy decision ---")
         print(result["policy_decision"])
@@ -143,17 +168,3 @@ if __name__ == "__main__":
         else:
             print("\n--- Execution skipped ---")
             print("Approval is required.")
-
-
-  
-  
-  
-
-
-
-
-
-
-
-
-    

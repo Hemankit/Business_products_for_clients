@@ -58,6 +58,47 @@ Products ask the registry for "the integration configured for this client/action
 call `create_record()` / `execute_action()` without knowing or caring which concrete
 provider is behind it.
 
+### Payload Adapters (`integrations/adapters/`)
+
+Canonical product data is converted into the exact payload a destination expects by a
+payload adapter, so workflows never hard-code provider field names:
+
+- **`base.py` — `BasePayloadAdapter`**: Contract with a single `build_payload(data)`.
+- **`hubspot_create_contact.py` — `HubSpotCreateContactAdapter`**: Maps canonical
+  `name` / `email` / `phone` / `company` to HubSpot contact properties (`firstname`,
+  `lastname`, `email`, `phone`, `company`). Unsupported fields are dropped.
+- **`configurable_mapping.py` — `ConfigurableMappingAdapter`**: Renames fields using a
+  client's `mappings.yaml` section for the product.
+- **`identity.py` — `IdentityPayloadAdapter`**: Passes data through unchanged. Used for
+  `mock` integrations that have no mapping.
+- **`registry.py` — `PayloadAdapterRegistry`**: Selects an adapter in this order:
+  1. a provider-specific adapter registered for `(provider, toolkit_slug, action_slug)`,
+  2. a `ConfigurableMappingAdapter` when the product has a `mappings.yaml` section,
+  3. an `IdentityPayloadAdapter` for the `mock` provider,
+  otherwise it raises `ValueError`.
+
+Adapter unit tests live in `integrations/adapters/tests/`.
+
+### Provider Setup
+
+`composio.py` reads `COMPOSIO_API_KEY` from the environment when it is imported, and it
+does not call `load_dotenv()` itself. Entry points must load `.env` before importing
+`integrations.registry` (the product `llm.py` modules do this on import, so import the
+product's LLM step first, or export the variable in the shell).
+
+To run a client against live HubSpot, set the integration in the client's
+`integrations.yaml`:
+
+```yaml
+crm:
+  provider: composio
+  toolkit_slug: hubspot
+  action_slug: HUBSPOT_CREATE_CONTACT
+  user_id: <client_name>
+```
+
+Set `provider: mock` to run the same workflow without calling any external system.
+
 ## Product Structure (`src/products/<product>/`)
 
 Every product lives in its own folder under `src/products/` and follows the same
@@ -89,12 +130,18 @@ general sequence:
    object.
 3. (Optional) Run product-specific validation/routing/resolution logic against the
    client's configuration.
-4. Map the canonical object to a client-specific payload (via `Mapper`, when the target
-   system needs client-specific field names).
+4. Convert the canonical object into the destination payload via
+   `PayloadAdapterRegistry` (provider-specific adapter, the client's `mappings.yaml`, or
+   pass-through for `mock`).
 5. Resolve the destination integration for the action via `IntegrationRegistry`.
 6. Check whether the action is allowed or requires approval via `PolicyChecker`.
 7. Execute the integration action (or stop and return early if approval/validation is
    pending), returning a structured result describing every stage of the pipeline.
+
+Early stops return only the stages completed so far: failed validation
+(`review_required` / `incomplete`) returns before any payload, policy check, or
+integration call, and `approval_required` returns the payload and policy decision
+without an `integration_result`.
 
 ## Client Structure (`clients/<client_name>/`)
 
